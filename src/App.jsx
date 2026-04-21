@@ -1309,7 +1309,14 @@ const Footer = ({setPage}) => (
       </div>
       <div style={{borderTop:"1px solid rgba(255,255,255,.06)",paddingTop:16,display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:8}}>
         <div style={{fontSize:12}}>© 2025 EURODIRECT Lease · Badhoevedorp · 020-2386371</div>
-        <div style={{fontSize:12,display:"flex",gap:18}}><span>📷 Instagram</span><span>💼 LinkedIn</span></div>
+        <div style={{fontSize:12,display:"flex",gap:18,alignItems:"center"}}>
+          <span>📷 Instagram</span>
+          <span>💼 LinkedIn</span>
+          <button onClick={()=>setPage("admin")} style={{background:"none",border:"none",color:"rgba(255,255,255,.1)",fontSize:10,cursor:"pointer",fontFamily:"var(--fb)",padding:0}}
+            onMouseEnter={e=>e.currentTarget.style.color="rgba(255,255,255,.35)"}
+            onMouseLeave={e=>e.currentTarget.style.color="rgba(255,255,255,.1)"}
+          >beheer</button>
+        </div>
       </div>
     </W>
   </footer>
@@ -1427,7 +1434,7 @@ const FAQ = ({setPage}) => {
 };
 
 export default function App() {
-  const [page,setPage]           = useState("home");
+  const [page,setPage]           = useState(window.location.hash==="#beheer"?"admin":"home");
   const [vehicle,setVehicle]     = useState(null);
   const [searchFilters,setSF]    = useState({});
   useEffect(()=>{ window.scrollTo(0,0); },[page]);
