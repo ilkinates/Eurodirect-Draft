@@ -1434,9 +1434,13 @@ const FAQ = ({setPage}) => {
 };
 
 export default function App() {
-  const [page,setPage]           = useState(window.location.hash==="#beheer"?"admin":"home");
+  const [page,setPage]           = useState("home");
   const [vehicle,setVehicle]     = useState(null);
   const [searchFilters,setSF]    = useState({});
+  useEffect(()=>{
+    const params = new URLSearchParams(window.location.search);
+    if(params.has("admin")) setPage("admin");
+  },[]);
   useEffect(()=>{ window.scrollTo(0,0); },[page]);
   return (
     <>
