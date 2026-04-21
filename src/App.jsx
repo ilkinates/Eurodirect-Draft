@@ -922,148 +922,356 @@ const Quote = ({setPage}) => {
 /* ══════════════════════════════════════════════════════════
    ADMIN
 ══════════════════════════════════════════════════════════ */
+const INIT_LEADS = [
+  {id:"L001",company:"Bakker Transport B.V.",contact:"Mark Bakker",email:"m.bakker@bt.nl",kvk:"23456789",vehicle:"BMW 5 Serie",leasevorm:"Financial Lease",looptijd:"60 mnd",km:"20.000/jr",wensen:"Voorkeur donkere kleur, automaat",status:"NEW",date:"2025-12-10",mo:629},
+  {id:"L002",company:"De Vries Bouw B.V.",contact:"Sandra de Vries",email:"s.devries@dvb.nl",kvk:"34567890",vehicle:"Mercedes C-Klasse",leasevorm:"Operational Lease",looptijd:"48 mnd",km:"25.000/jr",wensen:"Inclusief onderhoud en banden",status:"CONTACTED",date:"2025-12-09",mo:524},
+  {id:"L003",company:"Tech Solutions NL",contact:"Ahmed Yilmaz",email:"a.yilmaz@ts.nl",kvk:"45678901",vehicle:"VW ID.4",leasevorm:"Financial Lease",looptijd:"60 mnd",km:"15.000/jr",wensen:"Elektrisch, snellader gewenst",status:"QUOTED",date:"2025-12-08",mo:448},
+  {id:"L004",company:"Kaashandel Gouda",contact:"Pieter Smit",email:"p.smit@kg.nl",kvk:"56789012",vehicle:"Audi Q5",leasevorm:"Financial Lease",looptijd:"48 mnd",km:"30.000/jr",wensen:"",status:"WON",date:"2025-12-07",mo:492},
+  {id:"L005",company:"Flex IT B.V.",contact:"Lisa Wang",email:"l.wang@fi.nl",kvk:"67890123",vehicle:"Toyota RAV4",leasevorm:"Short Lease",looptijd:"6 mnd",km:"10.000/jr",wensen:"Zo snel mogelijk beschikbaar",status:"LOST",date:"2025-12-06",mo:429},
+];
+
+const SC = {
+  NEW:       {bg:"#EFF6FF",tx:"#1D4ED8",label:"Nieuw"},
+  CONTACTED: {bg:"#FFFBEB",tx:"#B45309",label:"Contact"},
+  QUOTED:    {bg:"#F5F3FF",tx:"#6D28D9",label:"Offerte"},
+  WON:       {bg:"#F0FDF4",tx:"#15803D",label:"Gewonnen"},
+  LOST:      {bg:"#FFF1F2",tx:"#BE123C",label:"Verloren"},
+};
+
 const Admin = ({setPage}) => {
-  const [tab,setTab]=useState("dash");
-  const [sync,setSync]=useState("idle");
-  const LEADS=[
-    {id:"L001",company:"Bakker Transport B.V.",contact:"Mark Bakker",email:"m.bakker@bt.nl",kvk:"23456789",vehicle:"BMW 5 Serie",type:"Financial",status:"NEW",date:"10-12-2025",mo:62900},
-    {id:"L002",company:"De Vries Bouw B.V.",contact:"Sandra de Vries",email:"s.devries@dvb.nl",kvk:"34567890",vehicle:"Mercedes C-Klasse",type:"Operational",status:"CONTACTED",date:"09-12-2025",mo:52400},
-    {id:"L003",company:"Tech Solutions NL",contact:"Ahmed Yilmaz",email:"a.yilmaz@ts.nl",kvk:"45678901",vehicle:"VW ID.4",type:"Financial",status:"QUOTED",date:"08-12-2025",mo:44800},
-    {id:"L004",company:"Kaashandel Gouda",contact:"Pieter Smit",email:"p.smit@kg.nl",kvk:"56789012",vehicle:"Audi Q5",type:"Financial",status:"WON",date:"07-12-2025",mo:49200},
-    {id:"L005",company:"Flex IT B.V.",contact:"Lisa Wang",email:"l.wang@fi.nl",kvk:"67890123",vehicle:"Toyota RAV4",type:"Short",status:"LOST",date:"06-12-2025",mo:42900},
-  ];
-  const SC={NEW:["#EFF6FF","#1D4ED8"],CONTACTED:["#FFFBEB","#B45309"],QUOTED:["#F5F3FF","#6D28D9"],WON:["#F0FDF4","#15803D"],LOST:["#FFF1F2","#BE123C"]};
-  const LOGS=[{id:"WH001",src:"Hexon",ev:"upsert",ext:"HX-88421",ok:true,n:1,ms:142,t:"12:34:01"},{id:"WH002",src:"Hexon",ev:"upsert",ext:"HX-88422",ok:true,n:1,ms:198,t:"12:34:03"},{id:"WH003",src:"Hexon",ev:"delete",ext:"HX-77001",ok:true,n:1,ms:67,t:"12:33:45"},{id:"WH004",src:"VWE",ev:"batch",ext:"VWE-B-12",ok:false,n:0,ms:2100,t:"12:29:11"},{id:"WH005",src:"Wheelerdelta",ev:"upsert",ext:"WD-99012",ok:true,n:1,ms:234,t:"12:15:22"}];
-  const trigger=()=>{setSync("busy");setTimeout(()=>setSync("ok"),1500);setTimeout(()=>setSync("idle"),4000);};
-  const thSt={padding:"8px 13px",textAlign:"left",fontFamily:"var(--fb)",fontSize:10,fontWeight:500,color:"var(--muted)",textTransform:"uppercase",letterSpacing:".8px",borderBottom:"1px solid var(--border)",background:"var(--bg)"};
-  const tdSt={padding:"10px 13px",borderBottom:"1px solid var(--border)",fontFamily:"var(--fb)",fontSize:13};
-  return (
-    <div style={{display:"flex",height:"calc(100vh - 64px)",width:"100%",background:"var(--bg)"}}>
-      <aside style={{width:200,background:"white",borderRight:"1px solid var(--border)",display:"flex",flexDirection:"column",flexShrink:0}}>
-        <div style={{padding:"16px 14px 12px",borderBottom:"1px solid var(--border)"}}>
-          <div style={{fontFamily:"var(--fb)",fontSize:10,fontWeight:500,color:"var(--muted)",letterSpacing:"1.5px",textTransform:"uppercase"}}>Beheerpaneel</div>
+  const [authed,   setAuthed]   = useState(false);
+  const [pw,       setPw]       = useState("");
+  const [pwErr,    setPwErr]    = useState(false);
+  const [tab,      setTab]      = useState("dash");
+  const [leads,    setLeads]    = useState(INIT_LEADS);
+  const [published,setPublished]= useState(() => Object.fromEntries(VEHICLES.map(v=>[v.id,true])));
+  const [selLead,  setSelLead]  = useState(null);
+  const [mailModal,setMailModal]= useState(null);
+  const [mailBody, setMailBody] = useState("");
+  const [mailSent, setMailSent] = useState(false);
+  const [vFilter,  setVFilter]  = useState("");
+
+  const thSt = {padding:"9px 14px",textAlign:"left",fontFamily:"var(--fb)",fontSize:10,fontWeight:600,color:"var(--muted)",textTransform:"uppercase",letterSpacing:".8px",borderBottom:"1px solid var(--border)",background:"#F8FAFC",whiteSpace:"nowrap"};
+  const tdSt = {padding:"11px 14px",borderBottom:"1px solid var(--border)",fontFamily:"var(--fb)",fontSize:13,verticalAlign:"middle"};
+
+  const handleLogin = () => {
+    if(pw === "eurodirect2025") { setAuthed(true); setPwErr(false); }
+    else { setPwErr(true); }
+  };
+
+  const updateStatus = (id, status) => setLeads(ls => ls.map(l => l.id===id ? {...l,status} : l));
+  const pubCount = Object.values(published).filter(Boolean).length;
+  const newLeads = leads.filter(l=>l.status==="NEW").length;
+
+  const openMail = (lead) => {
+    setMailModal(lead);
+    setMailBody(`Beste ${lead.contact.split(" ")[0]},\n\nBedankt voor uw aanvraag voor een ${lead.vehicle} via EURODIRECT Lease.\n\nWij hebben uw aanvraag ontvangen en zullen zo spoedig mogelijk contact met u opnemen.\n\nMet vriendelijke groet,\nTeam EURODIRECT Lease\ninfo@eurodirectlease.nl | 020-2386371`);
+    setMailSent(false);
+  };
+
+  const sendMail = () => {
+    window.location.href = `mailto:${mailModal.email}?subject=Uw leaseaanvraag – ${mailModal.vehicle}&body=${encodeURIComponent(mailBody)}`;
+    setMailSent(true);
+    updateStatus(mailModal.id, "CONTACTED");
+    setTimeout(()=>setMailModal(null), 1200);
+  };
+
+  /* ── LOGIN ── */
+  if(!authed) return (
+    <div style={{minHeight:"100vh",background:"var(--bg)",display:"flex",alignItems:"center",justifyContent:"center"}}>
+      <div style={{background:"white",borderRadius:16,border:"1px solid var(--border)",boxShadow:"var(--sh2)",padding:"40px 36px",width:360}}>
+        <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:28}}>
+          <svg width="32" height="24" viewBox="0 0 44 32" fill="none">
+            <path d="M22 2 C34 2 42 8 42 16 C42 24 34 30 22 30 L22 24 C30 24 36 20.4 36 16 C36 11.6 30 8 22 8 Z" fill="#29ABE2"/>
+            <circle cx="16" cy="16" r="14" fill="#E8401E"/>
+            <circle cx="16" cy="16" r="7" fill="white"/>
+          </svg>
+          <span style={{fontFamily:"var(--fb)",fontWeight:700,fontSize:16,color:"#1A6FD4"}}>eurodirect</span>
+          <span style={{fontFamily:"var(--fb)",fontWeight:600,fontSize:16,color:"#E8401E"}}>admin</span>
         </div>
-        {[["dash","📊","Dashboard"],["leads","📥","Leads"],["vehicles","🚗","Voertuigen"],["webhooks","🔗","Webhooks"]].map(([id,ic,lbl])=>(
-          <button key={id} onClick={()=>setTab(id)} style={{
-            background:tab===id?"var(--bpale)":"none",
-            borderLeft:`3px solid ${tab===id?"var(--blue)":"transparent"}`,
-            border:"none",borderLeft:`3px solid ${tab===id?"var(--blue)":"transparent"}`,
-            color:tab===id?"var(--blue)":"var(--muted)",
-            fontFamily:"var(--fb)",fontSize:13,fontWeight:tab===id?700:500,
-            padding:"11px 16px",display:"flex",alignItems:"center",gap:9,
-            cursor:"pointer",textAlign:"left",width:"100%",transition:"all .15s",
-          }}>{ic} {lbl}</button>
-        ))}
-        <div style={{marginTop:"auto",padding:12,borderTop:"1px solid var(--border)"}}>
-          <button onClick={()=>setPage("home")} style={{background:"none",border:"1.5px solid var(--border)",color:"var(--muted)",borderRadius:7,padding:"7px 0",fontSize:12,fontFamily:"var(--fb)",cursor:"pointer",width:"100%",transition:"all .15s"}}
-            onMouseEnter={e=>{e.currentTarget.style.borderColor="var(--blue)";e.currentTarget.style.color="var(--blue)"}}
-            onMouseLeave={e=>{e.currentTarget.style.borderColor="var(--border)";e.currentTarget.style.color="var(--muted)"}}
-          >← Terug naar site</button>
+        <h2 style={{fontFamily:"var(--fh)",fontWeight:900,fontSize:24,color:"var(--navy)",letterSpacing:"-1px",marginBottom:6}}>Inloggen</h2>
+        <p style={{fontFamily:"var(--fb)",fontSize:13,color:"var(--muted)",marginBottom:22}}>Toegang alleen voor beheerders.</p>
+        <label style={{fontFamily:"var(--fb)",fontSize:12,fontWeight:600,color:"var(--navy)",display:"block",marginBottom:6}}>Wachtwoord</label>
+        <input
+          type="password" value={pw}
+          onChange={e=>{setPw(e.target.value);setPwErr(false)}}
+          onKeyDown={e=>e.key==="Enter"&&handleLogin()}
+          placeholder="••••••••"
+          style={{width:"100%",padding:"11px 14px",border:`1.5px solid ${pwErr?"#E8401E":"var(--border)"}`,borderRadius:"var(--rs)",fontFamily:"var(--fb)",fontSize:14,outline:"none",marginBottom:pwErr?6:16,boxSizing:"border-box"}}
+        />
+        {pwErr && <div style={{fontFamily:"var(--fb)",fontSize:12,color:"#E8401E",marginBottom:12}}>Onjuist wachtwoord. Probeer opnieuw.</div>}
+        <button onClick={handleLogin} style={{width:"100%",background:"#1A6FD4",color:"white",border:"none",borderRadius:"var(--rs)",padding:"12px",fontSize:14,fontWeight:600,fontFamily:"var(--fb)",cursor:"pointer"}}>
+          Inloggen →
+        </button>
+        <button onClick={()=>setPage("home")} style={{width:"100%",background:"none",border:"none",color:"var(--muted)",fontFamily:"var(--fb)",fontSize:12,cursor:"pointer",marginTop:14}}>
+          ← Terug naar website
+        </button>
+      </div>
+    </div>
+  );
+
+  /* ── MAIN PANEL ── */
+  return (
+    <div style={{display:"flex",height:"calc(100vh - 64px)",width:"100%",background:"#F1F4F9"}}>
+
+      {/* SIDEBAR */}
+      <aside style={{width:220,background:"#0F1E35",display:"flex",flexDirection:"column",flexShrink:0}}>
+        <div style={{padding:"18px 16px 14px",borderBottom:"1px solid rgba(255,255,255,.07)"}}>
+          <div style={{display:"flex",alignItems:"center",gap:7}}>
+            <svg width="26" height="20" viewBox="0 0 44 32" fill="none">
+              <path d="M22 2 C34 2 42 8 42 16 C42 24 34 30 22 30 L22 24 C30 24 36 20.4 36 16 C36 11.6 30 8 22 8 Z" fill="#29ABE2"/>
+              <circle cx="16" cy="16" r="14" fill="#E8401E"/>
+              <circle cx="16" cy="16" r="7" fill="white"/>
+            </svg>
+            <div>
+              <div style={{fontFamily:"var(--fb)",fontSize:13,fontWeight:700,color:"white",letterSpacing:"-.3px"}}>eurodirect</div>
+              <div style={{fontFamily:"var(--fb)",fontSize:9,color:"rgba(255,255,255,.35)",letterSpacing:"1.5px"}}>BEHEERPANEEL</div>
+            </div>
+          </div>
+        </div>
+
+        <nav style={{flex:1,padding:"10px 8px"}}>
+          {[
+            ["dash","📊","Dashboard",""],
+            ["leads","📥","Leads",newLeads>0?String(newLeads):""],
+            ["vehicles","🚗","Voertuigen",`${pubCount}/${VEHICLES.length}`],
+          ].map(([id,ic,lbl,badge])=>(
+            <button key={id} onClick={()=>setTab(id)} style={{
+              width:"100%",display:"flex",alignItems:"center",gap:10,
+              padding:"10px 12px",borderRadius:8,marginBottom:2,
+              background:tab===id?"rgba(255,255,255,.1)":"transparent",
+              border:"none",cursor:"pointer",
+              color:tab===id?"white":"rgba(255,255,255,.5)",
+              fontFamily:"var(--fb)",fontSize:13,fontWeight:tab===id?600:400,
+              transition:"all .15s",textAlign:"left",
+            }}>
+              <span>{ic}</span>
+              <span style={{flex:1}}>{lbl}</span>
+              {badge&&<span style={{background:id==="leads"?"#E8401E":"rgba(255,255,255,.15)",color:"white",borderRadius:20,padding:"1px 7px",fontSize:10,fontWeight:700}}>{badge}</span>}
+            </button>
+          ))}
+        </nav>
+
+        <div style={{padding:"10px 8px",borderTop:"1px solid rgba(255,255,255,.07)"}}>
+          <button onClick={()=>{setAuthed(false);setPw("")}} style={{
+            width:"100%",padding:"9px 12px",background:"transparent",border:"none",
+            color:"rgba(255,255,255,.4)",fontFamily:"var(--fb)",fontSize:12,
+            cursor:"pointer",textAlign:"left",borderRadius:8,
+          }}>🔓 Uitloggen</button>
+          <button onClick={()=>setPage("home")} style={{
+            width:"100%",padding:"9px 12px",background:"transparent",border:"none",
+            color:"rgba(255,255,255,.4)",fontFamily:"var(--fb)",fontSize:12,
+            cursor:"pointer",textAlign:"left",borderRadius:8,
+          }}>← Naar website</button>
         </div>
       </aside>
-      <main style={{flex:1,overflow:"auto",padding:24}}>
-        {tab==="dash"&&<div>
-          <h1 style={{fontFamily:"var(--fh)",fontWeight:900,fontSize:26,color:"var(--navy)",letterSpacing:"-1px",marginBottom:4}}>Dashboard</h1>
-          <p style={{fontFamily:"var(--fb)",fontSize:12,color:"var(--muted)",marginBottom:20}}>{new Date().toLocaleDateString("nl-NL",{weekday:"long",year:"numeric",month:"long",day:"numeric"})}</p>
-          <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:12,marginBottom:20}}>
-            {[{l:"Nieuwe leads",v:"3",note:"+2 vandaag",c:"var(--blue)"},{l:"Actief aanbod",v:VEHICLES.length,note:"Up-to-date",c:"var(--green)"},{l:"Offertes",v:"12",note:"+4 deze week",c:"#7C3AED"},{l:"Conversie",v:"24%",note:"+3% vs vorige mnd",c:"var(--gold)"}].map(s=>(
-              <div key={s.l} style={{background:"white",borderRadius:"var(--r)",border:"1px solid var(--border)",boxShadow:"var(--sh)",padding:"16px 18px"}}>
-                <div style={{fontFamily:"var(--fb)",fontSize:10,fontWeight:500,color:"var(--muted)",textTransform:"uppercase",letterSpacing:".5px",marginBottom:6}}>{s.l}</div>
-                <div style={{fontFamily:"var(--fh)",fontWeight:900,fontSize:30,color:"var(--navy)",letterSpacing:"-1px"}}>{s.v}</div>
-                <div style={{fontFamily:"var(--fb)",fontSize:11,color:s.c,fontWeight:500,marginTop:5}}>{s.note}</div>
-              </div>
-            ))}
-          </div>
-          <div style={{background:"white",borderRadius:"var(--r)",border:"1px solid var(--border)",boxShadow:"var(--sh)",overflow:"hidden"}}>
-            <div style={{padding:"14px 18px",borderBottom:"1px solid var(--border)"}}><h3 style={{fontFamily:"var(--fh)",fontWeight:800,fontSize:17,color:"var(--navy)",letterSpacing:"-.5px"}}>Recente leads</h3></div>
-            <table style={{width:"100%",borderCollapse:"collapse"}}>
-              <thead><tr>{["Bedrijf","Voertuig","Type","Status","Mnd. termijn","Datum"].map(h=><th key={h} style={thSt}>{h}</th>)}</tr></thead>
-              <tbody>{LEADS.slice(0,4).map((l,i)=>(
-                <tr key={l.id} style={{background:i%2?"#FAFBFF":"white"}}>
-                  <td style={tdSt}><div style={{fontWeight:500,color:"var(--navy)"}}>{l.company}</div><div style={{fontSize:11,color:"var(--muted)"}}>{l.contact}</div></td>
-                  <td style={{...tdSt,color:"var(--muted)"}}>{l.vehicle}</td>
-                  <td style={tdSt}><span style={{background:"var(--bpale)",color:"var(--blue)",borderRadius:5,padding:"2px 7px",fontSize:11,fontWeight:500}}>{l.type}</span></td>
-                  <td style={tdSt}><span style={{background:SC[l.status][0],color:SC[l.status][1],borderRadius:5,padding:"2px 8px",fontSize:11,fontWeight:600}}>{l.status}</span></td>
-                  <td style={{...tdSt,fontFamily:"var(--fh)",fontWeight:800,fontSize:14,color:"var(--blue)",letterSpacing:"-.5px"}}>{eur(l.mo)}/mnd</td>
-                  <td style={{...tdSt,fontSize:12,color:"var(--muted)"}}>{l.date}</td>
-                </tr>
-              ))}</tbody>
-            </table>
-          </div>
-        </div>}
 
-        {tab==="leads"&&<div>
-          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:18}}>
-            <div><h1 style={{fontFamily:"var(--fh)",fontWeight:900,fontSize:26,color:"var(--navy)",letterSpacing:"-1px"}}>Leads & Offertes</h1><p style={{fontFamily:"var(--fb)",fontSize:12,color:"var(--muted)",marginTop:2}}>{LEADS.length} aanvragen</p></div>
-            <button style={{background:"var(--blue)",color:"white",border:"none",borderRadius:"var(--rs)",padding:"8px 16px",fontSize:12,fontWeight:500,fontFamily:"var(--fb)",cursor:"pointer"}}>⬇ Exporteren</button>
-          </div>
-          <div style={{background:"white",borderRadius:"var(--r)",border:"1px solid var(--border)",boxShadow:"var(--sh)",overflow:"hidden"}}>
-            <table style={{width:"100%",borderCollapse:"collapse"}}>
-              <thead><tr>{["#","Bedrijf / KVK","Contact","Voertuig","Type","Status","Mnd.termijn","Datum"].map(h=><th key={h} style={thSt}>{h}</th>)}</tr></thead>
-              <tbody>{LEADS.map((l,i)=>(
-                <tr key={l.id} style={{background:i%2?"#FAFBFF":"white"}}>
-                  <td style={{...tdSt,fontFamily:"monospace",fontSize:10,color:"var(--muted)"}}>{l.id}</td>
-                  <td style={tdSt}><div style={{fontWeight:500,color:"var(--navy)"}}>{l.company}</div><div style={{fontSize:10,color:"var(--muted)"}}>KVK: {l.kvk}</div></td>
-                  <td style={tdSt}><div style={{fontWeight:600}}>{l.contact}</div><div style={{fontSize:10,color:"var(--blue)"}}>{l.email}</div></td>
-                  <td style={{...tdSt,color:"var(--muted)"}}>{l.vehicle}</td>
-                  <td style={tdSt}><span style={{background:"var(--bpale)",color:"var(--blue)",borderRadius:5,padding:"2px 7px",fontSize:10,fontWeight:500}}>{l.type}</span></td>
-                  <td style={tdSt}><span style={{background:SC[l.status][0],color:SC[l.status][1],borderRadius:5,padding:"2px 8px",fontSize:10,fontWeight:600}}>{l.status}</span></td>
-                  <td style={{...tdSt,fontFamily:"var(--fh)",fontWeight:800,fontSize:13,color:"var(--blue)",letterSpacing:"-.5px"}}>{eur(l.mo)}/mnd</td>
-                  <td style={{...tdSt,fontSize:11,color:"var(--muted)"}}>{l.date}</td>
-                </tr>
-              ))}</tbody>
-            </table>
-          </div>
-        </div>}
+      {/* CONTENT */}
+      <main style={{flex:1,overflow:"auto",padding:28}}>
 
-        {tab==="vehicles"&&<div>
-          <div style={{marginBottom:18}}><h1 style={{fontFamily:"var(--fh)",fontWeight:900,fontSize:26,color:"var(--navy)",letterSpacing:"-1px"}}>Voertuigbeheer</h1><p style={{fontFamily:"var(--fb)",fontSize:12,color:"var(--muted)",marginTop:2}}>{VEHICLES.length} voertuigen beschikbaar</p></div>
-          <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(230px,1fr))",gap:14}}>
-            {VEHICLES.map(v=>(
-              <div key={v.id} style={{background:"white",borderRadius:"var(--r)",border:"1px solid var(--border)",boxShadow:"var(--sh)",overflow:"hidden"}}>
-                <div style={{height:120,overflow:"hidden",background:"#E4E8F0",position:"relative"}}><img src={v.img} alt="" style={{width:"100%",height:"100%",objectFit:"cover"}}/><div style={{position:"absolute",top:7,right:7}}><span style={{background:"#F0FDF4",color:"#15803D",borderRadius:4,padding:"2px 7px",fontSize:9,fontWeight:600,fontFamily:"var(--fb)"}}>● ACTIEF</span></div></div>
-                <div style={{padding:"11px 13px"}}><div style={{fontFamily:"var(--fh)",fontWeight:800,fontSize:16,color:"var(--navy)",letterSpacing:"-.3px"}}>{v.make} {v.model}</div><div style={{fontFamily:"var(--fb)",fontSize:11,color:"var(--muted)",marginBottom:7}}>{v.variant}</div><div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}><div style={{fontFamily:"var(--fh)",fontWeight:900,fontSize:14,color:"var(--blue)",letterSpacing:"-.5px"}}>{eur(v.price)}</div><div style={{fontFamily:"var(--fb)",fontSize:9,color:"var(--muted)"}}>ID: {v.id}</div></div></div>
-              </div>
-            ))}
-          </div>
-        </div>}
+        {/* ── DASHBOARD ── */}
+        {tab==="dash"&&(
+          <div>
+            <h1 style={{fontFamily:"var(--fh)",fontWeight:900,fontSize:28,color:"var(--navy)",letterSpacing:"-1px",marginBottom:4}}>Dashboard</h1>
+            <p style={{fontFamily:"var(--fb)",fontSize:12,color:"var(--muted)",marginBottom:24}}>{new Date().toLocaleDateString("nl-NL",{weekday:"long",year:"numeric",month:"long",day:"numeric"})}</p>
 
-        {tab==="webhooks"&&<div>
-          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:18}}>
-            <div><h1 style={{fontFamily:"var(--fh)",fontWeight:900,fontSize:26,color:"var(--navy)",letterSpacing:"-1px"}}>Webhook Logs</h1><p style={{fontFamily:"var(--fb)",fontSize:12,color:"var(--muted)",marginTop:2}}>Hexon · VWE · Wheelerdelta</p></div>
-            <button onClick={trigger} disabled={sync==="busy"} style={{background:sync==="ok"?"var(--green)":sync==="busy"?"var(--muted)":"var(--blue)",color:"white",border:"none",borderRadius:"var(--rs)",padding:"8px 16px",fontSize:12,fontWeight:500,fontFamily:"var(--fb)",cursor:"pointer",display:"flex",alignItems:"center",gap:6,transition:"background .3s"}}>
-              {sync==="busy"&&<span style={{width:11,height:11,border:"2px solid rgba(255,255,255,.3)",borderTopColor:"white",borderRadius:"50%",display:"inline-block",animation:"spin .8s linear infinite"}}/>}
-              {sync==="ok"?"✓ Sync OK!":sync==="busy"?"Syncing...":"▶ Test Hexon Sync"}
-            </button>
-          </div>
-          <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:12,marginBottom:18}}>
-            {[{name:"Hexon",url:"/api/webhooks/hexon",auth:"HMAC-SHA256"},{name:"VWE",url:"/api/webhooks/vwe",auth:"API Key"},{name:"Wheelerdelta",url:"/api/webhooks/wheelerdelta",auth:"API Key"}].map(e=>(
-              <div key={e.name} style={{background:"white",borderRadius:"var(--r)",border:"1px solid var(--border)",boxShadow:"var(--sh)",padding:"13px 15px"}}>
-                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:7}}><span style={{fontFamily:"var(--fh)",fontWeight:800,fontSize:16,color:"var(--navy)",letterSpacing:"-.3px"}}>{e.name}</span><span style={{background:"#F0FDF4",color:"#15803D",borderRadius:5,padding:"2px 7px",fontSize:9,fontWeight:800,fontFamily:"var(--fb)"}}>● ACTIEF</span></div>
-                <div style={{background:"var(--bpale)",borderRadius:5,padding:"3px 8px",fontFamily:"monospace",fontSize:10,color:"var(--blue)",marginBottom:5}}>{e.url}</div>
-                <div style={{fontFamily:"var(--fb)",fontSize:11,color:"var(--muted)"}}>Auth: {e.auth}</div>
+            <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:14,marginBottom:24}}>
+              {[
+                {l:"Nieuwe leads",     v:newLeads,       note:`${leads.length} totaal`,       c:"#1A6FD4"},
+                {l:"Actief aanbod",    v:pubCount,       note:`${VEHICLES.length-pubCount} verborgen`, c:"#0A7A50"},
+                {l:"Gewonnen",         v:leads.filter(l=>l.status==="WON").length, note:"deze maand", c:"#7C3AED"},
+                {l:"In behandeling",   v:leads.filter(l=>l.status==="QUOTED"||l.status==="CONTACTED").length, note:"openstaand", c:"#B45309"},
+              ].map(s=>(
+                <div key={s.l} style={{background:"white",borderRadius:12,border:"1px solid var(--border)",boxShadow:"0 1px 4px rgba(0,0,0,.05)",padding:"18px 20px"}}>
+                  <div style={{fontFamily:"var(--fb)",fontSize:10,fontWeight:600,color:"var(--muted)",textTransform:"uppercase",letterSpacing:".8px",marginBottom:8}}>{s.l}</div>
+                  <div style={{fontFamily:"var(--fh)",fontWeight:900,fontSize:34,color:"var(--navy)",letterSpacing:"-1px",lineHeight:1}}>{s.v}</div>
+                  <div style={{fontFamily:"var(--fb)",fontSize:11,color:s.c,fontWeight:600,marginTop:6}}>{s.note}</div>
+                </div>
+              ))}
+            </div>
+
+            <div style={{background:"white",borderRadius:12,border:"1px solid var(--border)",boxShadow:"0 1px 4px rgba(0,0,0,.05)",overflow:"hidden"}}>
+              <div style={{padding:"16px 20px",borderBottom:"1px solid var(--border)",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                <h3 style={{fontFamily:"var(--fh)",fontWeight:800,fontSize:18,color:"var(--navy)",letterSpacing:"-.5px"}}>Recente leads</h3>
+                <button onClick={()=>setTab("leads")} style={{fontFamily:"var(--fb)",fontSize:12,color:"#1A6FD4",background:"none",border:"none",cursor:"pointer",fontWeight:600}}>Alle leads →</button>
               </div>
-            ))}
+              <table style={{width:"100%",borderCollapse:"collapse"}}>
+                <thead><tr>{["Bedrijf","Voertuig","Leasevorm","Status","Datum"].map(h=><th key={h} style={thSt}>{h}</th>)}</tr></thead>
+                <tbody>{leads.slice(0,4).map((l,i)=>(
+                  <tr key={l.id} onClick={()=>{setTab("leads");setSelLead(l.id)}} style={{background:i%2?"#FAFBFC":"white",cursor:"pointer"}}
+                    onMouseEnter={e=>e.currentTarget.style.background="#F0F4FF"}
+                    onMouseLeave={e=>e.currentTarget.style.background=i%2?"#FAFBFC":"white"}>
+                    <td style={tdSt}><div style={{fontWeight:600,color:"var(--navy)"}}>{l.company}</div><div style={{fontSize:11,color:"var(--muted)"}}>{l.contact}</div></td>
+                    <td style={{...tdSt,color:"var(--muted)"}}>{l.vehicle}</td>
+                    <td style={tdSt}><span style={{background:"#EBF2FF",color:"#1A6FD4",borderRadius:5,padding:"2px 8px",fontSize:11,fontWeight:600}}>{l.leasevorm}</span></td>
+                    <td style={tdSt}><span style={{background:SC[l.status].bg,color:SC[l.status].tx,borderRadius:5,padding:"2px 8px",fontSize:11,fontWeight:700}}>{SC[l.status].label}</span></td>
+                    <td style={{...tdSt,fontSize:12,color:"var(--muted)"}}>{l.date}</td>
+                  </tr>
+                ))}</tbody>
+              </table>
+            </div>
           </div>
-          <div style={{background:"white",borderRadius:"var(--r)",border:"1px solid var(--border)",boxShadow:"var(--sh)",overflow:"hidden"}}>
-            <table style={{width:"100%",borderCollapse:"collapse"}}>
-              <thead><tr>{["ID","Bron","Event","Extern ID","Status","Vrtg.","ms","Tijdstip"].map(h=><th key={h} style={thSt}>{h}</th>)}</tr></thead>
-              <tbody>{LOGS.map((l,i)=>(
-                <tr key={l.id} style={{background:i%2?"#FAFBFF":"white"}}>
-                  <td style={{...tdSt,fontFamily:"monospace",fontSize:10,color:"var(--muted)"}}>{l.id}</td>
-                  <td style={{...tdSt,fontWeight:500,color:"var(--navy)"}}>{l.src}</td>
-                  <td style={tdSt}><span style={{background:"var(--bpale)",color:"var(--blue)",borderRadius:4,padding:"1px 6px",fontSize:10,fontWeight:500}}>{l.ev}</span></td>
-                  <td style={{...tdSt,fontFamily:"monospace",fontSize:10,color:"var(--muted)"}}>{l.ext}</td>
-                  <td style={tdSt}><span style={{background:l.ok?"#F0FDF4":"#FFF1F2",color:l.ok?"#15803D":"#BE123C",borderRadius:4,padding:"1px 7px",fontSize:10,fontWeight:600}}>{l.ok?"✓ OK":"✗ ERR"}</span></td>
-                  <td style={{...tdSt,textAlign:"center",fontWeight:500}}>{l.n}</td>
-                  <td style={{...tdSt,fontFamily:"monospace",fontSize:10,color:l.ms>1000?"#BE123C":"var(--muted)"}}>{l.ms}ms</td>
-                  <td style={{...tdSt,fontFamily:"monospace",fontSize:10,color:"var(--muted)"}}>{l.t}</td>
-                </tr>
-              ))}</tbody>
-            </table>
+        )}
+
+        {/* ── LEADS ── */}
+        {tab==="leads"&&(
+          <div>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:22}}>
+              <div>
+                <h1 style={{fontFamily:"var(--fh)",fontWeight:900,fontSize:28,color:"var(--navy)",letterSpacing:"-1px"}}>Leads & Offertes</h1>
+                <p style={{fontFamily:"var(--fb)",fontSize:12,color:"var(--muted)",marginTop:2}}>{leads.length} aanvragen · {newLeads} nieuw</p>
+              </div>
+            </div>
+
+            <div style={{display:"flex",flexDirection:"column",gap:10}}>
+              {leads.map(l=>(
+                <div key={l.id} style={{background:"white",borderRadius:12,border:`1px solid ${selLead===l.id?"#1A6FD4":"var(--border)"}`,boxShadow:"0 1px 4px rgba(0,0,0,.05)",overflow:"hidden",transition:"border .15s"}}>
+                  {/* Row */}
+                  <div style={{display:"flex",alignItems:"center",gap:14,padding:"14px 18px",cursor:"pointer"}}
+                    onClick={()=>setSelLead(selLead===l.id?null:l.id)}>
+                    <div style={{flex:1}}>
+                      <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:2}}>
+                        <span style={{fontFamily:"var(--fb)",fontWeight:700,fontSize:14,color:"var(--navy)"}}>{l.company}</span>
+                        <span style={{background:SC[l.status].bg,color:SC[l.status].tx,borderRadius:5,padding:"1px 7px",fontSize:10,fontWeight:700}}>{SC[l.status].label}</span>
+                      </div>
+                      <div style={{fontFamily:"var(--fb)",fontSize:12,color:"var(--muted)"}}>{l.contact} · {l.email} · KVK {l.kvk}</div>
+                    </div>
+                    <div style={{textAlign:"right",flexShrink:0}}>
+                      <div style={{fontFamily:"var(--fh)",fontWeight:900,fontSize:16,color:"#1A6FD4",letterSpacing:"-.5px"}}>€{l.mo}/mnd</div>
+                      <div style={{fontFamily:"var(--fb)",fontSize:11,color:"var(--muted)"}}>{l.vehicle} · {l.leasevorm}</div>
+                    </div>
+                    <span style={{color:"var(--muted)",fontSize:16,transform:selLead===l.id?"rotate(180deg)":"rotate(0)",transition:"transform .2s"}}>▾</span>
+                  </div>
+
+                  {/* Expanded detail */}
+                  {selLead===l.id&&(
+                    <div style={{borderTop:"1px solid var(--border)",padding:"16px 18px",background:"#FAFBFC"}}>
+                      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:12,marginBottom:16}}>
+                        {[
+                          ["Voertuig",l.vehicle],
+                          ["Leasevorm",l.leasevorm],
+                          ["Looptijd",l.looptijd],
+                          ["Kilometrage",l.km],
+                          ["Aanvraagdatum",l.date],
+                          ["Maandbedrag",`€${l.mo}/mnd`],
+                        ].map(([k,v])=>(
+                          <div key={k}>
+                            <div style={{fontFamily:"var(--fb)",fontSize:10,fontWeight:600,color:"var(--muted)",textTransform:"uppercase",letterSpacing:".7px",marginBottom:3}}>{k}</div>
+                            <div style={{fontFamily:"var(--fb)",fontSize:13,color:"var(--navy)",fontWeight:500}}>{v}</div>
+                          </div>
+                        ))}
+                      </div>
+                      {l.wensen&&(
+                        <div style={{marginBottom:16}}>
+                          <div style={{fontFamily:"var(--fb)",fontSize:10,fontWeight:600,color:"var(--muted)",textTransform:"uppercase",letterSpacing:".7px",marginBottom:3}}>Wensen</div>
+                          <div style={{fontFamily:"var(--fb)",fontSize:13,color:"var(--navy)"}}>{l.wensen}</div>
+                        </div>
+                      )}
+                      <div style={{display:"flex",alignItems:"center",gap:10,flexWrap:"wrap"}}>
+                        <span style={{fontFamily:"var(--fb)",fontSize:12,fontWeight:600,color:"var(--muted)"}}>Status:</span>
+                        {Object.entries(SC).map(([key,{bg,tx,label}])=>(
+                          <button key={key} onClick={()=>updateStatus(l.id,key)} style={{
+                            background:l.status===key?bg:"white",
+                            color:l.status===key?tx:"var(--muted)",
+                            border:`1.5px solid ${l.status===key?tx:"var(--border)"}`,
+                            borderRadius:6,padding:"4px 10px",fontSize:11,fontWeight:700,
+                            fontFamily:"var(--fb)",cursor:"pointer",transition:"all .15s",
+                          }}>{label}</button>
+                        ))}
+                        <button onClick={()=>openMail(l)} style={{
+                          marginLeft:"auto",background:"#1A6FD4",color:"white",border:"none",
+                          borderRadius:7,padding:"8px 16px",fontSize:12,fontWeight:600,
+                          fontFamily:"var(--fb)",cursor:"pointer",display:"flex",alignItems:"center",gap:6,
+                        }}>✉ Mail sturen</button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
           </div>
-        </div>}
+        )}
+
+        {/* ── VOERTUIGEN ── */}
+        {tab==="vehicles"&&(
+          <div>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:22}}>
+              <div>
+                <h1 style={{fontFamily:"var(--fh)",fontWeight:900,fontSize:28,color:"var(--navy)",letterSpacing:"-1px"}}>Voertuigbeheer</h1>
+                <p style={{fontFamily:"var(--fb)",fontSize:12,color:"var(--muted)",marginTop:2}}>{pubCount} gepubliceerd · {VEHICLES.length-pubCount} verborgen</p>
+              </div>
+              <div style={{display:"flex",gap:8}}>
+                <input
+                  value={vFilter} onChange={e=>setVFilter(e.target.value)}
+                  placeholder="Zoek merk of model..."
+                  style={{padding:"8px 14px",border:"1px solid var(--border)",borderRadius:"var(--rs)",fontFamily:"var(--fb)",fontSize:13,outline:"none",width:200}}
+                />
+                <button onClick={()=>setPublished(Object.fromEntries(VEHICLES.map(v=>[v.id,true])))} style={{background:"#0A7A50",color:"white",border:"none",borderRadius:"var(--rs)",padding:"8px 14px",fontSize:12,fontWeight:600,fontFamily:"var(--fb)",cursor:"pointer"}}>Alles aan</button>
+                <button onClick={()=>setPublished(Object.fromEntries(VEHICLES.map(v=>[v.id,false])))} style={{background:"#BE123C",color:"white",border:"none",borderRadius:"var(--rs)",padding:"8px 14px",fontSize:12,fontWeight:600,fontFamily:"var(--fb)",cursor:"pointer"}}>Alles uit</button>
+              </div>
+            </div>
+
+            <div style={{background:"white",borderRadius:12,border:"1px solid var(--border)",boxShadow:"0 1px 4px rgba(0,0,0,.05)",overflow:"hidden"}}>
+              <table style={{width:"100%",borderCollapse:"collapse"}}>
+                <thead><tr>{["Foto","Voertuig","Variant","Prijs","Brandstof","Km","Publiceren"].map(h=><th key={h} style={thSt}>{h}</th>)}</tr></thead>
+                <tbody>
+                  {VEHICLES.filter(v=>!vFilter||(v.make+" "+v.model).toLowerCase().includes(vFilter.toLowerCase())).map((v,i)=>(
+                    <tr key={v.id} style={{background:i%2?"#FAFBFC":"white",opacity:published[v.id]?1:.5,transition:"opacity .2s"}}>
+                      <td style={{...tdSt,width:70}}>
+                        <img src={v.img} alt="" style={{width:60,height:40,objectFit:"cover",borderRadius:6}}/>
+                      </td>
+                      <td style={tdSt}>
+                        <div style={{fontWeight:600,color:"var(--navy)"}}>{v.make} {v.model}</div>
+                        <div style={{fontSize:10,color:"var(--muted)",fontFamily:"monospace"}}>{v.id}</div>
+                      </td>
+                      <td style={{...tdSt,color:"var(--muted)",fontSize:12}}>{v.variant}</td>
+                      <td style={{...tdSt,fontFamily:"var(--fh)",fontWeight:800,fontSize:15,color:"#1A6FD4",letterSpacing:"-.5px",whiteSpace:"nowrap"}}>{eur(v.price)}</td>
+                      <td style={tdSt}><span style={{background:"#F3F4F6",color:"#374151",borderRadius:5,padding:"2px 8px",fontSize:11,fontWeight:600}}>{v.fuel}</span></td>
+                      <td style={{...tdSt,fontSize:12,color:"var(--muted)",whiteSpace:"nowrap"}}>{v.km?.toLocaleString("nl-NL")} km</td>
+                      <td style={{...tdSt,textAlign:"center"}}>
+                        <button onClick={()=>setPublished(p=>({...p,[v.id]:!p[v.id]}))} style={{
+                          width:44,height:24,borderRadius:12,border:"none",cursor:"pointer",
+                          background:published[v.id]?"#1A6FD4":"#D1D5DB",
+                          position:"relative",transition:"background .2s",flexShrink:0,
+                        }}>
+                          <span style={{
+                            position:"absolute",top:3,
+                            left:published[v.id]?22:3,
+                            width:18,height:18,borderRadius:"50%",
+                            background:"white",transition:"left .2s",display:"block",
+                            boxShadow:"0 1px 3px rgba(0,0,0,.2)",
+                          }}/>
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
       </main>
+
+      {/* MAIL MODAL */}
+      {mailModal&&(
+        <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,.45)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:1000}}>
+          <div style={{background:"white",borderRadius:16,padding:"28px 30px",width:520,boxShadow:"0 20px 60px rgba(0,0,0,.2)"}}>
+            <h3 style={{fontFamily:"var(--fh)",fontWeight:900,fontSize:22,color:"var(--navy)",letterSpacing:"-1px",marginBottom:4}}>Mail sturen</h3>
+            <p style={{fontFamily:"var(--fb)",fontSize:12,color:"var(--muted)",marginBottom:18}}>Aan: {mailModal.contact} · {mailModal.email}</p>
+            <textarea
+              value={mailBody} onChange={e=>setMailBody(e.target.value)}
+              rows={9}
+              style={{width:"100%",padding:"12px 14px",border:"1.5px solid var(--border)",borderRadius:"var(--rs)",fontFamily:"var(--fb)",fontSize:13,lineHeight:1.7,outline:"none",resize:"vertical",boxSizing:"border-box",marginBottom:16}}
+            />
+            <div style={{display:"flex",gap:10,justifyContent:"flex-end"}}>
+              <button onClick={()=>setMailModal(null)} style={{background:"none",border:"1.5px solid var(--border)",borderRadius:"var(--rs)",padding:"9px 18px",fontSize:13,fontFamily:"var(--fb)",cursor:"pointer",color:"var(--muted)"}}>Annuleren</button>
+              <button onClick={sendMail} style={{background:mailSent?"#0A7A50":"#1A6FD4",color:"white",border:"none",borderRadius:"var(--rs)",padding:"9px 20px",fontSize:13,fontWeight:600,fontFamily:"var(--fb)",cursor:"pointer",transition:"background .2s"}}>
+                {mailSent?"✓ Verzonden!":"✉ Versturen via mail"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
